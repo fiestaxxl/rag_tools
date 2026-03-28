@@ -101,7 +101,7 @@ class BaseEmbedder(ABC):
 # Local Embedder
 # =========================
 
-class Embedder(BaseEmbedder):
+class LocalEmbedder(BaseEmbedder):
     """Sentence-transformers embedder."""
 
     def __init__(self, config: Optional[EmbeddingSettings] = None):

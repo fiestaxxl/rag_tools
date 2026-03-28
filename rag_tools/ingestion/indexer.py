@@ -9,7 +9,7 @@ from rag_tools.config.settings import settings
 from rag_tools.storage.models import MCPTool, ToolChunk, ToolStatus
 from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
-from rag_tools.retrieval.embedder import Embedder
+from rag_tools.retrieval.embedder import BaseEmbedder, LocalEmbedder
 from rag_tools.ingestion.text_builder import TextBuilder, build_tool_metadata
 
 
@@ -20,11 +20,11 @@ class ToolIndexer:
         self,
         postgres_client: PostgresClient,
         qdrant_client: QdrantClientWrapper,
-        embedder: Optional[Embedder] = None,
+        embedder: Optional[BaseEmbedder] = None,
     ):
         self.postgres = postgres_client
         self.qdrant = qdrant_client
-        self.embedder = embedder or Embedder()
+        self.embedder = embedder or LocalEmbedder()
         self.text_builder = TextBuilder()
 
     async def initialize(self) -> None:

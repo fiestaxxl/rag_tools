@@ -14,7 +14,7 @@ from rag_tools.storage.models import (
 from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
 from rag_tools.ingestion.indexer import ToolIndexer
-from rag_tools.retrieval.embedder import Embedder, APIEmbedder
+from rag_tools.retrieval.embedder import BaseEmbedder, LocalEmbedder, APIEmbedder
 from rag_tools.retrieval.reranker import BaseReranker, APIReranker, CrossEncoderReranker
 from rag_tools.retrieval.retriever import ToolRetriever, RetrievalConfig
 from rag_tools.retrieval.pipeline import (
@@ -42,19 +42,23 @@ class RAGToolsManager:
     Provides a unified interface for managing MCP tools and performing RAG retrieval.
     """
 
-    def __init__(self, config: Optional[Settings] = None, use_api: bool = True):
+    def __init__(self, config: Optional[Settings] = None,
+                    embedder: Optional[BaseEmbedder] = None,
+                    reranker: Optional[BaseReranker] = None,
+):
         """
         Initialize the RAG Tools manager.
 
         Args:
             config: Optional settings override
+            embedder: Optional, Embedder instance to use
+            reranker: Optional, Reranker instance to use 
         """
-        self.use_api = use_api
         self.config = config or settings
         self._postgres: Optional[PostgresClient] = None
         self._qdrant: Optional[QdrantClientWrapper] = None
-        self._embedder: Optional[Embedder] = None
-        self._reranker: Optional[BaseReranker] = None
+        self._embedder: Optional[BaseEmbedder] = embedder
+        self._reranker: Optional[BaseReranker] = reranker
         self._indexer: Optional[ToolIndexer] = None
         self._retriever: Optional[ToolRetriever] = None
         self._pipeline: Optional[ToolRetrievalPipeline] = None
@@ -74,20 +78,14 @@ class RAGToolsManager:
         await self._qdrant.connect()
 
         # Initialize embedder
-        if self.use_api:
-            self._embedder = APIEmbedder(self.config.api_embedding)
-            await self._embedder.initialize()
+        if self._embedder is None:
+            self._embedder = LocalEmbedder(self.config.embedding)
 
-            # Initialize reranker
-            self._reranker = APIReranker(self.config.api_reranker)
-            await self._reranker.initialize()
-        else:
-            self._embedder = Embedder(self.config.embedding)
-            await self._embedder.initialize()
-
-            # Initialize reranker
+        if self._reranker is None:
             self._reranker = CrossEncoderReranker(self.config.reranker)
-            await self._reranker.initialize()
+
+        await self._embedder.initialize()
+        await self._reranker.initialize()
 
         # Initialize indexer
         self._indexer = ToolIndexer(
@@ -307,9 +305,11 @@ class RAGToolsManager:
 
 
 # Convenience functions
-async def create_manager(config: Optional[Settings] = None, use_api: bool = True) -> RAGToolsManager:
+async def create_manager(config: Optional[Settings] = None, 
+                         embedder: Optional[BaseEmbedder] = None,
+                         reranker: Optional[BaseReranker] = None) -> RAGToolsManager:
     """Create and initialize a RAG Tools manager."""
-    manager = RAGToolsManager(config, use_api=use_api)
+    manager = RAGToolsManager(config, embedder, reranker)
     await manager.initialize()
     return manager
 

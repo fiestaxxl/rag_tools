@@ -10,7 +10,7 @@ from qdrant_client.http.models import FieldCondition, MatchValue, Filter
 from rag_tools.config.settings import settings
 from rag_tools.storage.models import RetrievalResult, ToolStatus
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
-from rag_tools.retrieval.embedder import Embedder
+from rag_tools.retrieval.embedder import BaseEmbedder, LocalEmbedder
 
 
 @dataclass
@@ -29,10 +29,10 @@ class ToolRetriever:
     def __init__(
         self,
         qdrant_client: QdrantClientWrapper,
-        embedder: Optional[Embedder] = None,
+        embedder: Optional[BaseEmbedder] = None,
     ):
         self.qdrant = qdrant_client
-        self.embedder = embedder or Embedder()
+        self.embedder = embedder or LocalEmbedder()
         self._initialized = False
 
     async def initialize(self) -> None:

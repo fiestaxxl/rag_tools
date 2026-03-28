@@ -1,5 +1,5 @@
 """Retrieval module for RAG-based tool retrieval."""
-from rag_tools.retrieval.embedder import BaseEmbedder, Embedder, CachedEmbedder, APIEmbedder
+from rag_tools.retrieval.embedder import BaseEmbedder, LocalEmbedder, CachedEmbedder, APIEmbedder
 from rag_tools.retrieval.reranker import BaseReranker, CrossEncoderReranker, SimpleReranker, HybridReranker, APIReranker, BM25Reranker
 from rag_tools.retrieval.retriever import ToolRetriever, RetrievalConfig
 from rag_tools.retrieval.pipeline import (
@@ -11,7 +11,7 @@ from rag_tools.retrieval.pipeline import (
 
 __all__ = [
     "BaseEmbedder"
-    "Embedder",
+    "LocalEmbedder",
     "CachedEmbedder",
     "APIEmbedder",
     "BaseReranker",
