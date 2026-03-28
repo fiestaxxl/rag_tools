@@ -207,6 +207,7 @@ class RAGToolsManager:
         query: str,
         top_k: int = 10,
         rerank: bool = True,
+        rerank_top_k: int = 5,
         min_score: float = 0.3,
     ) -> PipelineResult:
         """
@@ -226,7 +227,7 @@ class RAGToolsManager:
         config = PipelineConfig(
             top_k=top_k,
             rerank=rerank,
-            rerank_top_k=min(top_k, 5),
+            rerank_top_k=rerank_top_k,
             min_relevance_score=min_score,
         )
 
@@ -237,6 +238,7 @@ class RAGToolsManager:
         query: str,
         top_k: int = 10,
         rerank: bool = True,
+        rerank_top_k: int = 5,
         min_score: float = 0.3,
     ) -> List[RetrievalResult]:
         """
@@ -249,7 +251,7 @@ class RAGToolsManager:
         Returns:
             List of RetrievalResult
         """
-        result = await self.retrieve(query, top_k=top_k, rerank=rerank, min_score=min_score)
+        result = await self.retrieve(query, top_k=top_k, rerank=rerank, min_score=min_score, rerank_top_k=rerank_top_k)
         return result.results
 
     # Evaluation

@@ -56,7 +56,9 @@ async def main():
 
     # Example 3: Retrieve tools
     print("\n3. Retrieving tools...")
-    results = await manager.retrieve_tools("Get docking score for Alzheimer desease", rerank=True)
+    results = await manager.retrieve_tools("Get docking score for Alzheimer desease", rerank=True,
+                                           top_k=10,
+                                           rerank_top_k=5)
 
     print(f"   Found {len(results)} relevant tools:")
     for r in results:
@@ -68,6 +70,7 @@ async def main():
         query="Get docking score for Alzheimer desease",
         top_k=10,
         rerank=True,
+        rerank_top_k=8,
         min_score=0.0
     )
 
