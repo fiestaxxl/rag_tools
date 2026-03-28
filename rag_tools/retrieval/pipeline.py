@@ -301,7 +301,7 @@ def create_pipeline(
 
     # Update settings based on device
     settings.embedding.device = device
-    settings.reranker.device = device
+    settings.cross_encoder_reranker.device = device
 
     # Create embedder
     if embedder is None:

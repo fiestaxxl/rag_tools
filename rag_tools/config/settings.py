@@ -3,7 +3,7 @@ Configuration settings for the RAG Tools module.
 """
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -43,7 +43,7 @@ class APIEmbeddingSettings(BaseModel):
     normalize_embeddings: bool = False
 
 
-class RerankerSettings(BaseModel):
+class CrossEncoderRerankerSettings(BaseModel):
     """Cross-encoder reranker configuration."""
     model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
     device: str = "cpu"
@@ -58,6 +58,15 @@ class APIRerankerSettings(BaseModel):
     timeout: int = 30
     batch_size: int = 32
     top_k: int = 20  # Number of candidates to rerank
+
+class BM25RerankerSettings(BaseModel):
+    """BM25 reranker configuration."""
+    k1: float = 1.5
+    b: float = 0.75
+
+class HybridRerankerSettings(BaseModel):
+    """Hybrid reranker configuration."""
+    weights: List[float] = [0.7, 0.3]
 
 class RAGSettings(BaseModel):
     """RAG pipeline configuration."""
@@ -77,8 +86,10 @@ class Settings(BaseSettings):
     # Model settings
     embedding: EmbeddingSettings = EmbeddingSettings()
     api_embedding: APIEmbeddingSettings = APIEmbeddingSettings()
-    reranker: RerankerSettings = RerankerSettings()
+    cross_encoder_reranker: CrossEncoderRerankerSettings = CrossEncoderRerankerSettings()
     api_reranker: APIRerankerSettings = APIRerankerSettings()
+    bm_reranker: BM25RerankerSettings = BM25RerankerSettings()
+    hybrid_reranker: HybridRerankerSettings = HybridRerankerSettings()
     rag: RAGSettings = RAGSettings()
 
     # Storage paths

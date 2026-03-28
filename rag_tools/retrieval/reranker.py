@@ -8,7 +8,7 @@ import numpy as np
 import httpx
 import re
 
-from rag_tools.config.settings import settings, RerankerSettings, APIRerankerSettings
+from rag_tools.config.settings import settings, CrossEncoderRerankerSettings, APIRerankerSettings, BM25RerankerSettings
 from rag_tools.storage.models import RetrievalResult
 
 
@@ -125,9 +125,9 @@ class BaseReranker(ABC):
 class CrossEncoderReranker(BaseReranker):
     """Sentence-transformers cross-encoder."""
 
-    def __init__(self, config: Optional[RerankerSettings] = None):
+    def __init__(self, config: Optional[CrossEncoderRerankerSettings] = None):
         super().__init__()
-        self.config = config or settings.reranker
+        self.config = config or settings.cross_encoder_reranker
         self._model = None
 
     async def initialize(self) -> None:
@@ -188,7 +188,7 @@ class APIReranker(BaseReranker):
 
     def __init__(self, config: Optional[APIRerankerSettings] = None):
         super().__init__()
-        self.config = config or settings.reranker
+        self.config = config or settings.api_reranker
         self._url = self.config.url
 
     @property
@@ -262,16 +262,17 @@ class SimpleReranker(BaseReranker):
 class BM25Reranker(BaseReranker):
     """BM25-based reranker using rank_bm25."""
 
-    def __init__(self, k1: float = 1.5, b: float = 0.75):
+    def __init__(self, config: Optional[BM25RerankerSettings] = None):
         super().__init__()
-        self.k1 = k1
-        self.b = b
+        self.config = config or settings.bm_reranker
+        self.k1 = self.config.k1
+        self.b = self.config.b
 
     @property
     def model_name(self) -> str:
         return "bm25"
 
-    @classmethod
+    @staticmethod
     def tokenize(text: str):
         return re.findall(r"\w+", text.lower())
 
@@ -306,11 +307,12 @@ class HybridReranker(BaseReranker):
     def __init__(
         self,
         rerankers: List[BaseReranker],
-        weights: Optional[List[float]] = None,
+        config: Optional[BM25RerankerSettings] = None
     ):
         super().__init__()
         self.rerankers = rerankers
-        self.weights = weights or [1.0] * len(rerankers)
+        self.config = config or settings.hybrid_reranker
+        self.weights = self.config.weights or [1.0] * len(rerankers)
 
     @property
     def model_name(self) -> str:
@@ -335,6 +337,8 @@ class HybridReranker(BaseReranker):
 
         for reranker in self.rerankers:
             scores = await reranker._score(query, documents)
+            if reranker.model_name == 'bm25':
+                scores = self._softmax(scores)
             all_scores.append(scores)
 
         # weighted sum
@@ -347,4 +351,9 @@ class HybridReranker(BaseReranker):
             final_scores.append(score)
 
         return final_scores
+    
+    def _softmax(self, scores):
+        arr = np.array(scores)
+        exp = np.exp(arr - np.max(arr))
+        return (exp / exp.sum()).tolist()
    
