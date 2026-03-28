@@ -15,7 +15,7 @@ from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
 from rag_tools.ingestion.indexer import ToolIndexer
 from rag_tools.retrieval.embedder import Embedder, APIEmbedder
-from rag_tools.retrieval.reranker import Reranker, APIReranker
+from rag_tools.retrieval.reranker import BaseReranker, APIReranker, CrossEncoderReranker
 from rag_tools.retrieval.retriever import ToolRetriever, RetrievalConfig
 from rag_tools.retrieval.pipeline import (
     ToolRetrievalPipeline,
@@ -54,7 +54,7 @@ class RAGToolsManager:
         self._postgres: Optional[PostgresClient] = None
         self._qdrant: Optional[QdrantClientWrapper] = None
         self._embedder: Optional[Embedder] = None
-        self._reranker: Optional[Reranker] = None
+        self._reranker: Optional[BaseReranker] = None
         self._indexer: Optional[ToolIndexer] = None
         self._retriever: Optional[ToolRetriever] = None
         self._pipeline: Optional[ToolRetrievalPipeline] = None
@@ -86,7 +86,7 @@ class RAGToolsManager:
             await self._embedder.initialize()
 
             # Initialize reranker
-            self._reranker = Reranker(self.config.reranker)
+            self._reranker = CrossEncoderReranker(self.config.reranker)
             await self._reranker.initialize()
 
         # Initialize indexer

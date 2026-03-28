@@ -49,7 +49,8 @@ class RerankerSettings(BaseModel):
     device: str = "cpu"
     batch_size: int = 32
     top_k: int = 20  # Number of candidates to rerank
-
+    max_length: int = 512
+    
 class APIRerankerSettings(BaseModel):
     """API Cross-encoder reranker configuration."""
     url: str = "http://localhost:1234"

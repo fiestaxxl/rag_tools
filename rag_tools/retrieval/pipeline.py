@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from rag_tools.config.settings import settings
 from rag_tools.storage.models import RetrievalResult
 from rag_tools.retrieval.embedder import Embedder
-from rag_tools.retrieval.reranker import Reranker, SimpleReranker
+from rag_tools.retrieval.reranker import BaseReranker, SimpleReranker, CrossEncoderReranker
 from rag_tools.retrieval.retriever import ToolRetriever, RetrievalConfig
 
 
@@ -45,7 +45,7 @@ class ToolRetrievalPipeline:
     def __init__(
         self,
         embedder: Optional[Embedder] = None,
-        reranker: Optional[Reranker] = None,
+        reranker: Optional[BaseReranker] = None,
         retriever: Optional[ToolRetriever] = None,
     ):
         self.embedder = embedder or Embedder()
@@ -310,6 +310,6 @@ def create_pipeline(
     # Create reranker
     reranker = None
     if use_cross_encoder:
-        reranker = Reranker()
+        reranker = CrossEncoderReranker()
 
     return ToolRetrievalPipeline(embedder=embedder, reranker=reranker)
