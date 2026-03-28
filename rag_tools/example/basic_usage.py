@@ -7,6 +7,7 @@ for managing and retrieving MCP tools.
 import asyncio
 from rag_tools import create_manager, MCPServer
 from rag_tools.config.settings import get_settings
+from rag_tools.retrieval import APIEmbedder, APIReranker, BM25Reranker, HybridReranker
 
 
 async def main():
@@ -17,7 +18,12 @@ async def main():
     # Create and initialize manager
     settings = get_settings()
     print(settings)
-    manager = await create_manager(settings, use_api=True)
+
+    embedder = APIEmbedder(settings.api_embedding)
+    api_reranker = APIReranker(settings.api_reranker)
+    bm2_reranker = BM25Reranker(settings.bm_reranker)
+    reranker = HybridReranker([api_reranker, bm2_reranker], settings.hybrid_reranker)
+    manager = await create_manager(settings, embedder, reranker)
     print("Manager initialized")
 
     # Example 1: Add a server manually
@@ -54,14 +60,15 @@ async def main():
 
     print(f"   Found {len(results)} relevant tools:")
     for r in results:
-        print(f"   - {r.name} (score: {r.score:.3f})")
+        print(f"   - {r.name} (score: {r.score:.3f}, rerank_score: {r.rerank_score:.3f})")
 
     # Example 4: Get detailed results
     print("\n4. Detailed retrieval...")
     result = await manager.retrieve(
         query="Get docking score for Alzheimer desease",
         top_k=10,
-        rerank=True
+        rerank=True,
+        min_score=0.0
     )
 
     print(f"   Query: {result.query}")
