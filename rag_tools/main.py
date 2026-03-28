@@ -209,15 +209,22 @@ class RAGToolsManager:
         rerank: bool = True,
         rerank_top_k: int = 5,
         min_score: float = 0.3,
+        use_chunks: bool = False,
+        server_filter: Optional[List[str]] = None,
+        tags_filter: Optional[List[str]] = None
     ) -> PipelineResult:
         """
         Retrieve relevant tools for a query.
 
         Args:
             query: Search query
-            top_k: Number of results to return
+            top_k: Number of results to retrieve
             rerank: Whether to use reranking
-            min_score: Minimum relevance score
+            rerank_top_k: Number of results to reranl
+            min_score: Minimum relevance score,
+            use_chunks: Whether to use chunked collection to retrieve
+            server_filter: Criterias to server filter
+            tags_filter: Tags filter of tools
 
         Returns:
             PipelineResult with retrieval results
@@ -229,6 +236,9 @@ class RAGToolsManager:
             rerank=rerank,
             rerank_top_k=rerank_top_k,
             min_relevance_score=min_score,
+            use_chunks=use_chunks,
+            server_filter=server_filter,
+            tags_filter=tags_filter
         )
 
         return await self._pipeline.retrieve(query, config)

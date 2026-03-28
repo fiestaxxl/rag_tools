@@ -22,7 +22,6 @@ class PipelineConfig:
     use_chunks: bool = False
     server_filter: Optional[List[str]] = None
     tags_filter: Optional[List[str]] = None
-    hybrid_rerank: bool = False
 
 
 @dataclass

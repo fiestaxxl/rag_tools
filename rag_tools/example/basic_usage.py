@@ -71,7 +71,8 @@ async def main():
         top_k=10,
         rerank=True,
         rerank_top_k=8,
-        min_score=0.0
+        min_score=0.0,
+        use_chunks=True
     )
 
     print(f"   Query: {result.query}")
