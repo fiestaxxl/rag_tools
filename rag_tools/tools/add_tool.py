@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 from rag_tools.config.settings import settings
 from rag_tools.storage.models import MCPTool, MCPServer, ToolStatus
@@ -183,7 +183,7 @@ class ToolAdder:
             List of synced tools
         """
         try:
-            async with streamablehttp_client(server.url) as (read, write, _):
+            async with streamable_http_client(server.url) as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     response = await session.list_tools()
@@ -291,7 +291,7 @@ async def add_mcp_server(
     await postgres.initialize()
 
     qdrant = QdrantClientWrapper()
-    qdrant.connect()
+    await qdrant.connect()
 
     adder = ToolAdder(postgres, qdrant)
 
@@ -300,4 +300,4 @@ async def add_mcp_server(
         return server
     finally:
         await postgres.close()
-        qdrant.close()
+        await qdrant.close()

@@ -41,7 +41,7 @@ class ToolRetriever:
             return
 
         await self.embedder.initialize()
-        self.qdrant.set_embedding_dim(self.embedder.embedding_dim)
+        await self.qdrant.set_embedding_dim(self.embedder.embedding_dim)
         self._initialized = True
 
     async def retrieve(
@@ -78,7 +78,7 @@ class ToolRetriever:
         )
 
         # Search
-        search_results = self.qdrant.search(
+        search_results = await self.qdrant.search(
             collection_name=collection,
             query_vector=query_embedding.tolist(),
             top_k=config.top_k * 2,  # Get more for filtering
@@ -144,7 +144,7 @@ class ToolRetriever:
         )
 
         # Batch search
-        all_results = self.qdrant.search_batch(
+        all_results = await self.qdrant.search_batch(
             collection_name=collection,
             query_vectors=query_embeddings.tolist(),
             top_k=config.top_k * 2,
@@ -219,7 +219,7 @@ class ToolRetriever:
 
     async def get_tool_by_id(self, tool_id: str) -> Optional[RetrievalResult]:
         """Get a specific tool by ID."""
-        results = self.qdrant.retrieve(
+        results = await self.qdrant.retrieve(
             collection_name=settings.tools_collection,
             point_ids=[tool_id],
             with_payload=True,
@@ -235,7 +235,7 @@ class ToolRetriever:
         if not tool_ids:
             return []
 
-        results = self.qdrant.retrieve(
+        results = await self.qdrant.retrieve(
             collection_name=settings.tools_collection,
             point_ids=tool_ids,
             with_payload=True,
@@ -252,7 +252,7 @@ class ToolRetriever:
         offset: Optional[str] = None,
     ) -> tuple[List[RetrievalResult], Optional[str]]:
         """Get all tools with pagination."""
-        results, next_offset = self.qdrant.scroll(
+        results, next_offset = await self.qdrant.scroll(
             collection_name=settings.tools_collection,
             limit=limit,
             offset=offset,

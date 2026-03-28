@@ -90,7 +90,7 @@ class ToolRetrievalPipeline:
         if not self.retriever:
             from rag_tools.storage.qdrant_client import QdrantClientWrapper
             qdrant = QdrantClientWrapper()
-            qdrant.connect()
+            await qdrant.connect()
             self.retriever = ToolRetriever(qdrant, self.embedder)
             await self.retriever.initialize()
 
@@ -164,7 +164,7 @@ class ToolRetrievalPipeline:
         if not self.retriever:
             from rag_tools.storage.qdrant_client import QdrantClientWrapper
             qdrant = QdrantClientWrapper()
-            qdrant.connect()
+            await qdrant.connect()
             self.retriever = ToolRetriever(qdrant, self.embedder)
             await self.retriever.initialize()
 

@@ -16,7 +16,7 @@ from rag_tools.ingestion.parser import (
 from rag_tools.ingestion.indexer import ToolIndexer
 
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 
 @dataclass
 class SyncResult:
@@ -89,7 +89,7 @@ class MCPSyncer:
             existing_by_name = {t.name: t for t in existing_tools}
 
             # Connect to MCP server
-            async with sse_client(server.url) as (read, write, _):
+            async with streamable_http_client(server.url) as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     response = await session.list_tools()
@@ -276,7 +276,7 @@ async def sync_server_by_id(server_id: str) -> SyncResult:
     await postgres.initialize()
 
     qdrant = QdrantClientWrapper()
-    qdrant.connect()
+    await qdrant.connect()
 
     syncer = MCPSyncer(postgres, qdrant)
 
@@ -285,7 +285,7 @@ async def sync_server_by_id(server_id: str) -> SyncResult:
         return result
     finally:
         await postgres.close()
-        qdrant.close()
+        await qdrant.close()
 
 
 async def sync_all_servers() -> List[SyncResult]:
@@ -299,7 +299,7 @@ async def sync_all_servers() -> List[SyncResult]:
     await postgres.initialize()
 
     qdrant = QdrantClientWrapper()
-    qdrant.connect()
+    await qdrant.connect()
 
     syncer = MCPSyncer(postgres, qdrant)
 
@@ -308,4 +308,4 @@ async def sync_all_servers() -> List[SyncResult]:
         return results
     finally:
         await postgres.close()
-        qdrant.close()
+        await qdrant.close()

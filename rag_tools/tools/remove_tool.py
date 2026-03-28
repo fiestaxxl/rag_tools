@@ -224,7 +224,7 @@ async def remove_mcp_server(server_id: str) -> Dict[str, Any]:
     await postgres.initialize()
 
     qdrant = QdrantClientWrapper()
-    qdrant.connect()
+    await qdrant.connect()
 
     remover = ToolRemover(postgres, qdrant)
 
@@ -233,7 +233,7 @@ async def remove_mcp_server(server_id: str) -> Dict[str, Any]:
         return stats
     finally:
         await postgres.close()
-        qdrant.close()
+        await qdrant.close()
 
 
 async def remove_tool_by_id(tool_id: str) -> bool:
@@ -250,7 +250,7 @@ async def remove_tool_by_id(tool_id: str) -> bool:
     await postgres.initialize()
 
     qdrant = QdrantClientWrapper()
-    qdrant.connect()
+    await qdrant.connect()
 
     remover = ToolRemover(postgres, qdrant)
 

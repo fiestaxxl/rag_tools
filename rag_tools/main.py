@@ -71,7 +71,7 @@ class RAGToolsManager:
 
         # Initialize Qdrant
         self._qdrant = QdrantClientWrapper(self.config.qdrant)
-        self._qdrant.connect()
+        await self._qdrant.connect()
 
         # Initialize embedder
         if self.use_api:
@@ -115,7 +115,7 @@ class RAGToolsManager:
         if self._postgres:
             await self._postgres.close()
         if self._qdrant:
-            self._qdrant.close()
+            await self._qdrant.close()
         self._initialized = False
 
     @asynccontextmanager
@@ -276,7 +276,7 @@ class RAGToolsManager:
         postgres_stats = await self._postgres.get_stats()
 
         try:
-            qdrant_info = self._qdrant.get_collection_info(self.config.tools_collection)
+            qdrant_info = await self._qdrant.get_collection_info(self.config.tools_collection)
         except Exception:
             qdrant_info = None
 

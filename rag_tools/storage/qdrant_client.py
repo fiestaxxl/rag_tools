@@ -5,7 +5,7 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models
 from qdrant_client.http.exceptions import UnexpectedResponse
 from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
@@ -21,32 +21,32 @@ class QdrantClientWrapper:
         self._client = None
         self._embedding_dim = None
 
-    def connect(self) -> None:
+    async def connect(self) -> None:
         """Connect to Qdrant server."""
-        self._client = QdrantClient(
+        self._client = AsyncQdrantClient(
             url=self.config.url,
             api_key=self.config.api_key,
             timeout=self.config.timeout,
             prefer_grpc=self.config.prefer_grpc,
         )
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close the connection."""
         self._client = None
 
-    def set_embedding_dim(self, dim: int) -> None:
+    async def set_embedding_dim(self, dim: int) -> None:
         """Set the embedding dimension."""
         self._embedding_dim = dim
 
     @property
-    def client(self) -> QdrantClient:
+    def client(self) -> AsyncQdrantClient:
         """Get the Qdrant client."""
         if self._client is None:
             raise RuntimeError("Qdrant not connected. Call connect() first.")
         return self._client
 
     # Collection management
-    def create_collection(
+    async def create_collection(
         self,
         collection_name: str,
         vector_size: int,
@@ -54,12 +54,12 @@ class QdrantClientWrapper:
     ) -> bool:
         """Create a new collection."""
         try:
-            self.client.get_collection(collection_name)
+            await self.client.get_collection(collection_name)
             return False  # Collection exists
         except (UnexpectedResponse, Exception):
             pass
 
-        self.client.create_collection(
+        await self.client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
                 size=vector_size,
@@ -68,26 +68,26 @@ class QdrantClientWrapper:
         )
         return True
 
-    def delete_collection(self, collection_name: str) -> bool:
+    async def delete_collection(self, collection_name: str) -> bool:
         """Delete a collection."""
         try:
-            self.client.delete_collection(collection_name)
+            await self.client.delete_collection(collection_name)
             return True
         except UnexpectedResponse:
             return False
 
-    def collection_exists(self, collection_name: str) -> bool:
+    async def collection_exists(self, collection_name: str) -> bool:
         """Check if a collection exists."""
         try:
-            self.client.get_collection(collection_name)
+            await self.client.get_collection(collection_name)
             return True
         except UnexpectedResponse:
             return False
 
-    def get_collection_info(self, collection_name: str) -> Optional[Dict[str, Any]]:
+    async def get_collection_info(self, collection_name: str) -> Optional[Dict[str, Any]]:
         """Get collection information."""
         try:
-            info = self.client.get_collection(collection_name)
+            info = await self.client.get_collection(collection_name)
 
             return {
                 "name": collection_name,                     # use the argument
@@ -100,13 +100,13 @@ class QdrantClientWrapper:
         except UnexpectedResponse:
             return None
 
-    def list_collections(self) -> List[str]:
+    async def list_collections(self) -> List[str]:
         """List all collections."""
-        collections = self.client.get_collections()
+        collections = await self.client.get_collections()
         return [c for c in collections.collections]
 
     # Point operations
-    def upsert_points(
+    async def upsert_points(
         self,
         collection_name: str,
         vectors: List[List[float]],
@@ -129,20 +129,20 @@ class QdrantClientWrapper:
             for id_, vector, payload in zip(ids, vectors, payloads)
         ]
 
-        self.client.upsert(
+        await self.client.upsert(
             collection_name=collection_name,
             points=points,
         )
 
         return True
 
-    def delete_points(
+    async def delete_points(
         self,
         collection_name: str,
         point_ids: List[str],
     ) -> bool:
         """Delete points from a collection."""
-        self.client.delete(
+        await self.client.delete(
             collection_name=collection_name,
             points_selector=models.PointIdsList(
                 points=point_ids,
@@ -150,13 +150,13 @@ class QdrantClientWrapper:
         )
         return True
 
-    def delete_by_filter(
+    async def delete_by_filter(
         self,
         collection_name: str,
         filter_conditions: List[FieldCondition],
     ) -> int:
         """Delete points by filter condition."""
-        result = self.client.delete(
+        result = await self.client.delete(
             collection_name=collection_name,
             points_selector=models.FilterSelector(
                 filter=models.Filter(
@@ -168,7 +168,7 @@ class QdrantClientWrapper:
         return result.status in ('acknowledged', 'completed') or 0
 
     # Search operations
-    def search(
+    async def search(
         self,
         collection_name: str,
         query_vector: List[float],
@@ -181,7 +181,7 @@ class QdrantClientWrapper:
         """Search for similar vectors."""
         search_params = models.SearchParams(hnsw_ef=128)
 
-        results = self.client.query_points(
+        results = await self.client.query_points(
             collection_name=collection_name,
             query=query_vector,
             limit=top_k,
@@ -201,7 +201,7 @@ class QdrantClientWrapper:
             for hit in results.points
         ]
 
-    def search_batch(
+    async def search_batch(
         self,
         collection_name: str,
         query_vectors: List[List[float]],
@@ -214,7 +214,7 @@ class QdrantClientWrapper:
         """Batch search for similar vectors."""
         search_params = models.SearchParams(hnsw_ef=128)
 
-        all_results = self.client.search_batch(
+        all_results = await self.client.search_batch(
             collection_name=collection_name,
             requests=[
                 models.SearchRequest(
@@ -242,7 +242,7 @@ class QdrantClientWrapper:
             for results in all_results
         ]
 
-    def scroll(
+    async def scroll(
         self,
         collection_name: str,
         limit: int = 100,
@@ -252,7 +252,7 @@ class QdrantClientWrapper:
         with_vectors: bool = False,
     ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
         """Scroll through points in a collection."""
-        results, next_page_offset = self.client.scroll(
+        results, next_page_offset = await self.client.scroll(
             collection_name=collection_name,
             limit=limit,
             offset=offset,
@@ -272,7 +272,7 @@ class QdrantClientWrapper:
 
         return points, next_page_offset
 
-    def retrieve(
+    async def retrieve(
         self,
         collection_name: str,
         point_ids: List[str],
@@ -280,7 +280,7 @@ class QdrantClientWrapper:
         with_vectors: bool = False,
     ) -> List[Dict[str, Any]]:
         """Retrieve points by ID."""
-        results = self.client.retrieve(
+        results = await self.client.retrieve(
             collection_name=collection_name,
             ids=point_ids,
             with_payload=with_payload,
@@ -297,7 +297,7 @@ class QdrantClientWrapper:
         ]
 
     # Indexing operations
-    def create_payload_index(
+    async def create_payload_index(
         self,
         collection_name: str,
         field_name: str,
@@ -305,7 +305,7 @@ class QdrantClientWrapper:
     ) -> bool:
         """Create a payload index for faster filtering."""
         try:
-            self.client.create_payload_index(
+            await self.client.create_payload_index(
                 collection_name=collection_name,
                 field_name=field_name,
                 field_schema=field_schema or models.PayloadSchemaType.KEYWORD,
@@ -315,22 +315,22 @@ class QdrantClientWrapper:
             return False
 
     # Count operations
-    def count(
+    async def count(
         self,
         collection_name: str,
         filter_conditions: Optional[List[FieldCondition]] = None,
     ) -> int:
         """Count points in a collection."""
-        result = self.client.count(
+        result = await self.client.count(
             collection_name=collection_name,
             count_filter=models.Filter(must=filter_conditions) if filter_conditions else None,
         )
         return result.count
 
     # Health check
-    def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> Dict[str, Any]:
         """Check Qdrant health status."""
-        info = self.client.get_collections()
+        info = await self.client.get_collections()
         return {
             "status": "ok",
             "collections": len(info.collections),

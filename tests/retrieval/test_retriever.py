@@ -10,23 +10,23 @@ pytestmark = pytest.mark.asyncio
 
 
 class DummyQdrant:
-    def set_embedding_dim(self, dim):
+    async def set_embedding_dim(self, dim):
         self.dim = dim
 
-    def search(self, **kwargs):
+    async def search(self, **kwargs):
         return [
             {"id": "1", "score": 0.9, "payload": {"tool_id": "t1", "name": "A"}},
             {"id": "2", "score": 0.8, "payload": {"tool_id": "t2", "name": "B"}},
         ]
 
-    def search_batch(self, **kwargs):
-        return [self.search(), self.search()]
+    async def search_batch(self, **kwargs):
+        return [await self.search(), await self.search()]
 
-    def retrieve(self, **kwargs):
+    async def retrieve(self, **kwargs):
         return [{"id": "1", "payload": {"tool_id": "t1", "name": "A"}}]
 
-    def scroll(self, **kwargs):
-        return (self.search(), None)
+    async def scroll(self, **kwargs):
+        return (await self.search(), None)
 
 
 class DummyEmbedder:

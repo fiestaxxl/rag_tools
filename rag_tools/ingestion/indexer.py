@@ -33,55 +33,55 @@ class ToolIndexer:
         await self.embedder.initialize()
 
         # Set embedding dimension
-        self.qdrant.set_embedding_dim(self.embedder.embedding_dim)
+        await self.qdrant.set_embedding_dim(self.embedder.embedding_dim)
 
         # Create collections
-        self._ensure_collections()
+        await self._ensure_collections()
 
         # Create payload indexes
-        self._ensure_indexes()
+        await self._ensure_indexes()
 
-    def _ensure_collections(self) -> None:
+    async def _ensure_collections(self) -> None:
         """Ensure Qdrant collections exist."""
         # Main tools collection
-        self.qdrant.create_collection(
+        await self.qdrant.create_collection(
             collection_name=settings.tools_collection,
             vector_size=self.embedder.embedding_dim,
         )
 
         # Chunks collection for larger tools
-        self.qdrant.create_collection(
+        await self.qdrant.create_collection(
             collection_name=settings.tools_chunks_collection,
             vector_size=self.embedder.embedding_dim,
         )
 
-    def _ensure_indexes(self) -> None:
+    async def _ensure_indexes(self) -> None:
         """Ensure payload indexes exist."""
         # Index on tool_id for fast lookups
-        self.qdrant.create_payload_index(
+        await self.qdrant.create_payload_index(
             collection_name=settings.tools_collection,
             field_name="tool_id",
         )
 
         # Index on server_id for filtering
-        self.qdrant.create_payload_index(
+        await self.qdrant.create_payload_index(
             collection_name=settings.tools_collection,
             field_name="server_id",
         )
 
         # Index on name for exact matches
-        self.qdrant.create_payload_index(
+        await self.qdrant.create_payload_index(
             collection_name=settings.tools_collection,
             field_name="name",
         )
 
         # Chunk indexes
-        self.qdrant.create_payload_index(
+        await self.qdrant.create_payload_index(
             collection_name=settings.tools_chunks_collection,
             field_name="tool_id",
         )
 
-        self.qdrant.create_payload_index(
+        await self.qdrant.create_payload_index(
             collection_name=settings.tools_chunks_collection,
             field_name="server_id",
         )
@@ -114,7 +114,7 @@ class ToolIndexer:
         metadata = build_tool_metadata(tool)
 
         # Store in Qdrant
-        self.qdrant.upsert_points(
+        await self.qdrant.upsert_points(
             collection_name=settings.tools_collection,
             vectors=[embedding],
             payloads=[metadata],
@@ -176,7 +176,7 @@ class ToolIndexer:
                 ids = [t.tool_id for t in batch_tools]
 
                 # Store in Qdrant
-                self.qdrant.upsert_points(
+                await self.qdrant.upsert_points(
                     collection_name=settings.tools_collection,
                     vectors=embeddings.tolist() if isinstance(embeddings, np.ndarray) else embeddings,
                     payloads=batch_metadata,
@@ -233,7 +233,7 @@ class ToolIndexer:
         ]
 
         # Store in Qdrant
-        self.qdrant.upsert_points(
+        await self.qdrant.upsert_points(
             collection_name=settings.tools_chunks_collection,
             vectors=embeddings.tolist() if isinstance(embeddings, np.ndarray) else embeddings,
             payloads=payloads,
@@ -256,15 +256,15 @@ class ToolIndexer:
         await self.postgres.delete_tool(tool_id)
 
         # Remove from Qdrant
-        self.qdrant.delete_points(
+        await self.qdrant.delete_points(
             collection_name=settings.tools_collection,
             point_ids=[tool_id],
         )
 
         # Remove chunks
-        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.http.models import  FieldCondition, MatchValue
 
-        self.qdrant.delete_by_filter(
+        await self.qdrant.delete_by_filter(
             collection_name=settings.tools_chunks_collection,
             filter_conditions=[
                 FieldCondition(
@@ -295,10 +295,10 @@ class ToolIndexer:
             await self.postgres.delete_tool(tool.tool_id)
 
         # Remove from Qdrant
-        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+        from qdrant_client.http.models import FieldCondition, MatchValue
 
         # Remove from main collection
-        self.qdrant.delete_by_filter(
+        await self.qdrant.delete_by_filter(
             collection_name=settings.tools_collection,
             filter_conditions=[
                 FieldCondition(
@@ -309,7 +309,7 @@ class ToolIndexer:
         )
 
         # Remove from chunks collection
-        self.qdrant.delete_by_filter(
+        await self.qdrant.delete_by_filter(
             collection_name=settings.tools_chunks_collection,
             filter_conditions=[
                 FieldCondition(
@@ -339,8 +339,8 @@ class ToolIndexer:
 
         # Qdrant stats
         try:
-            main_info = self.qdrant.get_collection_info(settings.tools_collection)
-            chunks_info = self.qdrant.get_collection_info(settings.tools_chunks_collection)
+            main_info = asyncio.get_event_loop().run_until_complete(self.qdrant.get_collection_info(settings.tools_collection))
+            chunks_info = asyncio.get_event_loop().run_until_complete(self.qdrant.get_collection_info(settings.tools_chunks_collection))
 
             stats["qdrant"] = {
                 "tools_collection": main_info,

@@ -11,7 +11,7 @@ pytestmark = pytest.mark.asyncio
 async def postgres_client():
     # Use service name 'postgres' (docker-compose network) instead of localhost
     config = PostgresSettings(
-        host="host.docker.internal",       # container name in docker-compose
+        host="localhost",       # container name in docker-compose or localhost
         port=5432,
         user="rag_tools",
         password="rag_tools_password",
