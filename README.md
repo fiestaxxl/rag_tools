@@ -43,10 +43,10 @@ To install the module in another project (e.g., from a Git repository), you can:
 pip install -e /path/to/rag_tools
 
 # Install from a Git repository
-pip install git+https://github.com/fiesta_xxl/rag_tools.git
+pip install git+https://github.com/fiestaxxl/rag_tools.git
 
 # Install with optional local models
-pip install "rag_tools[local]"@git+https://github.com/fiesta_xxl/rag_tools.git
+pip install "rag_tools[local]"@git+https://github.com/fiestaxxl/rag_tools.git
 ```
 
 ## Quick Start
