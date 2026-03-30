@@ -306,7 +306,7 @@ class RAGToolsManager:
             "postgres": postgres_stats,
             "qdrant": qdrant_info,
             "embedder": {
-                "model": self.config.embedding.model_name,
+                "model": self._embedder.model_name,
                 "dimension": self._embedder.embedding_dim,
             },
         }
