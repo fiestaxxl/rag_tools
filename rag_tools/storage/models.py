@@ -4,7 +4,7 @@ Data models for the RAG Tools module.
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import Column, String, Text, JSON, DateTime, Boolean, Integer, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
@@ -18,12 +18,25 @@ class ToolStatus(str, Enum):
     ERROR = "error"
     SYNCING = "syncing"
 
+class MCPProtocol(str, Enum):
+    HTTP = "http"
+    STDIO = "stdio"
 
 class MCPServer(BaseModel):
     """MCP server metadata."""
     server_id: str = Field(..., description="Unique identifier for the MCP server")
     name: str = Field(..., description="Display name of the server")
-    url: str = Field(..., description="HTTP URL of the MCP server")
+
+    protocol: MCPProtocol = MCPProtocol.HTTP
+
+    #HTTP
+    url: Optional[str] = Field(None, description="HTTP URL of the MCP server")
+
+    # STDIO
+    command: Optional[str] = Field(None, description="Command to execute for server")
+    args: List[str] = Field(default_factory=list, description="Args of server execution")
+    env: Dict[str, str] = Field(default_factory=dict, description="Enviroment for server run")
+
     description: Optional[str] = Field(None, description="Description of the server")
     session_id: Optional[str] = Field(None, description="MCP session ID if applicable")
     headers: Dict[str, str] = Field(default_factory=dict, description="HTTP headers")
@@ -33,7 +46,22 @@ class MCPServer(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+    @model_validator(mode="after")
+    def validate_protocol_config(self):
+        if self.protocol == MCPProtocol.HTTP:
+            if not self.url:
+                raise ValueError("HTTP protocol requires 'url' to be set")
 
+        elif self.protocol == MCPProtocol.STDIO:
+            if not self.command:
+                raise ValueError("STDIO protocol requires 'command'")
+            if not self.args:
+                raise ValueError("STDIO protocol requires non-empty 'args'")
+            if not self.env:
+                raise ValueError("STDIO protocol requires non-empty 'env'")
+
+        return self
+    
 class MCPTool(BaseModel):
     """Single MCP tool."""
     tool_id: str = Field(..., description="Unique identifier (server_id:tool_name)")
@@ -79,7 +107,18 @@ class ServerModel(Base):
 
     server_id = Column(String(255), primary_key=True)
     name = Column(String(255), nullable=False)
-    url = Column(String(512), nullable=False)
+
+    # protocol
+    protocol = Column(String(50), default="http")
+
+    # HTTP
+    url = Column(String(512), nullable=True)
+
+    # STDIO
+    command = Column(String(255), nullable=True)
+    args = Column(JSON, default=list)
+    env = Column(JSON, default=dict)
+
     description = Column(Text, nullable=True)
     session_id = Column(String(255), nullable=True)
     headers = Column(JSON, default=dict)

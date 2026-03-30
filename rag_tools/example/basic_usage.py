@@ -29,6 +29,7 @@ async def main():
     # Example 1: Add a server manually
     print("\n1. Adding a server...")
     server = await manager.add_server(
+        protocol='http',
         url="http://10.32.11.22:7332/mcp",
         name="example-server-chemistry",
         description="Example MCP server for demonstration",

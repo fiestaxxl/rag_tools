@@ -7,9 +7,10 @@ from datetime import datetime
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from mcp.client.stdio import stdio_client
 
 from rag_tools.config.settings import settings
-from rag_tools.storage.models import MCPTool, MCPServer, ToolStatus
+from rag_tools.storage.models import MCPTool, MCPProtocol, MCPServer, ToolStatus
 from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
 from rag_tools.ingestion.indexer import ToolIndexer
@@ -34,14 +35,39 @@ class ToolAdder:
         self.qdrant = qdrant
         self.indexer = indexer or ToolIndexer(postgres, qdrant)
 
+    @staticmethod
+    def get_transport(server: MCPServer):
+        if server.protocol == MCPProtocol.HTTP: 
+            if server.url:
+                return streamable_http_client(server.url)
+            else:
+                raise ValueError("HTTP transport requires 'url'") 
+            
+        elif server.protocol == MCPProtocol.STDIO: 
+            if server.command:
+                return stdio_client(
+                    command=server.command,
+                    args=server.args or [],
+                    env=server.env or {}
+                )
+            else:
+                raise ValueError("STDIO transport requires 'command'")
+            
+        else:
+            raise ValueError(f"Server {server.server_id} has no valid connection config")
+
     async def add_server(
         self,
-        url: str,
         name: str,
+        protocol: MCPProtocol = MCPProtocol.HTTP,
+        url: Optional[str] = None,
         description: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         timeout: int = 30,
         sync_tools: bool = True,
+        command: Optional[str] = None,
+        args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
     ) -> MCPServer:
         """
         Add a new MCP server.
@@ -61,10 +87,23 @@ class ToolAdder:
 
         server_id = hashlib.sha256(f"{url}:{name}".encode()).hexdigest()[:16]
 
+        if protocol == MCPProtocol.HTTP:
+            if not url:
+                raise ValueError("HTTP transport requires 'url'")
+        elif protocol == MCPProtocol.STDIO:
+            if not command:
+                raise ValueError("STDIO transport requires 'command'")
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
+
         server = MCPServer(
             server_id=server_id,
             name=name,
-            url=url,
+            protocol=protocol,
+            url=url or "",  # keep schema compatibility,
+            command=command or '',
+            args=args or [],
+            env=env or {},
             description=description,
             headers=headers or {},
             timeout=timeout,
@@ -183,7 +222,8 @@ class ToolAdder:
             List of synced tools
         """
         try:
-            async with streamable_http_client(server.url) as (read, write, _):
+            client = self.get_transport(server)
+            async with client as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     response = await session.list_tools()
@@ -267,8 +307,12 @@ class ToolAdder:
 
 
 async def add_mcp_server(
-    url: str,
     name: str,
+    protocol: MCPProtocol = MCPProtocol.HTTP,
+    url: Optional[str] = None,
+    command: Optional[str] = None,
+    args: Optional[List[str]] = None,
+    env: Optional[Dict[str, str]] = None,
     postgres_url: str = None,
     qdrant_url: str = None,
     **kwargs,
@@ -277,8 +321,12 @@ async def add_mcp_server(
     Convenience function to add an MCP server.
 
     Args:
-        url: MCP server URL
         name: Server name
+        protocol: Transport of MCP server
+        url: Optional, MCP server URL if HTTP transport
+        command: Optional, command for MCP server if STDIO transport
+        args: Optional, args for MCP server if STDIO transport
+        env: Optional, enviromnet variables for MCP server if STDIO transport
         postgres_url: PostgreSQL connection URL
         qdrant_url: Qdrant URL
         **kwargs: Additional arguments for ToolAdder
@@ -286,6 +334,15 @@ async def add_mcp_server(
     Returns:
         Created MCPServer
     """
+    if protocol == MCPProtocol.HTTP:
+        if not url:
+            raise ValueError("HTTP transport requires 'url'")
+    elif protocol == MCPProtocol.STDIO:
+        if not command:
+            raise ValueError("STDIO transport requires 'command'")
+    else:
+        raise ValueError(f"Unsupported protocol: {protocol}")
+    
     # Initialize clients
     postgres = PostgresClient()
     await postgres.initialize()
@@ -296,7 +353,13 @@ async def add_mcp_server(
     adder = ToolAdder(postgres, qdrant)
 
     try:
-        server = await adder.add_server(url, name, **kwargs)
+        server = await adder.add_server(name=name,
+                                        protocol=protocol,
+                                        url=url,
+                                        command=command,
+                                        args=args,
+                                        env=env,
+                                        **kwargs)
         return server
     finally:
         await postgres.close()

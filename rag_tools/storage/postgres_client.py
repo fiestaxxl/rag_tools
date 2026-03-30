@@ -81,7 +81,11 @@ class PostgresClient:
             if existing:
                 # Update existing server
                 existing.name = server.name
+                existing.protocol = server.protocol
                 existing.url = server.url
+                existing.command = server.command
+                existing.args = server.args
+                existing.env = server.env
                 existing.description = server.description
                 existing.session_id = server.session_id
                 existing.headers = server.headers
@@ -95,7 +99,11 @@ class PostgresClient:
                 model = ServerModel(
                     server_id=server.server_id,
                     name=server.name,
+                    protocol=server.protocol,
                     url=server.url,
+                    command=server.command,
+                    args=server.args,
+                    env=server.env,
                     description=server.description,
                     session_id=server.session_id,
                     headers=server.headers,
@@ -112,7 +120,11 @@ class PostgresClient:
             return MCPServer(
                 server_id=model.server_id,
                 name=model.name,
+                protocol=model.protocol,
                 url=model.url,
+                command=model.command,
+                args=model.args,
+                env=model.env,
                 description=model.description,
                 session_id=model.session_id,
                 headers=model.headers,
@@ -137,7 +149,11 @@ class PostgresClient:
             return MCPServer(
                 server_id=model.server_id,
                 name=model.name,
+                protocol=model.protocol,
                 url=model.url,
+                command=model.command,
+                args=model.args,
+                env=model.env,
                 description=model.description,
                 session_id=model.session_id,
                 headers=model.headers,
@@ -162,7 +178,11 @@ class PostgresClient:
                 MCPServer(
                     server_id=m.server_id,
                     name=m.name,
+                    protocol=m.protocol,
                     url=m.url,
+                    command=m.command,
+                    args=m.args,
+                    env=m.env,
                     description=m.description,
                     session_id=m.session_id,
                     headers=m.headers,

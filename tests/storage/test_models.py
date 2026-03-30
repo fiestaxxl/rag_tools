@@ -1,11 +1,25 @@
-from rag_tools.storage import MCPServer, MCPTool, ToolCredential, ToolChunk, ToolStatus
+from rag_tools.storage import MCPServer, MCPProtocol, MCPTool, ToolCredential, ToolChunk, ToolStatus
 
 
-def test_mcp_server_creation():
+def test_hhtp_mcp_server_creation():
     server = MCPServer(
         server_id="s1",
         name="Test Server",
+        protocol=MCPProtocol.HTTP,
         url="http://localhost"
+    )
+
+    assert server.server_id == "s1"
+    assert server.status == ToolStatus.ACTIVE
+
+def test_stdio_mcp_server_creation():
+    server = MCPServer(
+        server_id="s1",
+        name="Test Server",
+        protocol=MCPProtocol.STDIO,
+        command="npx",
+        args=['heheh'],
+        env={'env1': 'val1'}
     )
 
     assert server.server_id == "s1"

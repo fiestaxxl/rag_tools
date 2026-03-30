@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 
 from rag_tools.config.settings import settings, Settings
 from rag_tools.storage.models import (
-    MCPServer, MCPTool, RetrievalResult, ToolStatus
+    MCPServer, MCPProtocol, MCPTool, RetrievalResult, ToolStatus
 )
 from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
@@ -128,8 +128,12 @@ class RAGToolsManager:
     # Server management
     async def add_server(
         self,
-        url: str,
         name: str,
+        protocol: MCPProtocol = MCPProtocol.HTTP,
+        url: Optional[str] = None,
+        command: Optional[str] = None,
+        args: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
         description: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         sync_tools: bool = True,
@@ -138,8 +142,12 @@ class RAGToolsManager:
         Add a new MCP server.
 
         Args:
-            url: MCP server URL
             name: Server name
+            protocol: Transport of MCP server
+            url: Optional, MCP server URL if HTTP transport
+            command: Optional, command for MCP server if STDIO transport
+            args: Optional, args for MCP server if STDIO transport
+            env: Optional, enviromnet variables for MCP server if STDIO transport
             description: Optional description
             headers: HTTP headers
             sync_tools: Whether to sync tools immediately
@@ -150,7 +158,11 @@ class RAGToolsManager:
         await self.initialize()
         adder = ToolAdder(self._postgres, self._qdrant, self._indexer)
         return await adder.add_server(
+            protocol=protocol,
             url=url,
+            command=command,
+            args=args,
+            env=env,
             name=name,
             description=description,
             headers=headers,
@@ -339,6 +351,7 @@ __all__ = [
     "MCPSyncer",
     # Models
     "MCPServer",
+    "MCPProtocol",
     "MCPTool",
     "RetrievalResult",
     "PipelineResult",
@@ -364,6 +377,7 @@ if __name__ == "__main__":
 
         # Add a server
         server = await manager.add_server(
+            protocol = 'http',
             url="http://localhost:8080/mcp",
             name="example-server",
             description="Example MCP server",

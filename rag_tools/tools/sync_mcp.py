@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Any, Callable
 from datetime import datetime
 from dataclasses import dataclass
 
-from rag_tools.storage.models import MCPServer, MCPTool, ToolStatus
+from rag_tools.storage.models import MCPServer,MCPProtocol, MCPTool, ToolStatus
 from rag_tools.storage.postgres_client import PostgresClient
 from rag_tools.storage.qdrant_client import QdrantClientWrapper
 from rag_tools.ingestion.parser import (
@@ -17,6 +17,7 @@ from rag_tools.ingestion.indexer import ToolIndexer
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+from mcp.client.stdio import stdio_client
 
 @dataclass
 class SyncResult:
@@ -46,6 +47,27 @@ class MCPSyncer:
         self.qdrant = qdrant
         self.indexer = indexer or ToolIndexer(postgres, qdrant)
 
+    @staticmethod
+    def get_transport(server: MCPServer):
+        if server.protocol == MCPProtocol.HTTP: 
+            if server.url:
+                return streamable_http_client(server.url)
+            else:
+                raise ValueError("HTTP transport requires 'url'") 
+            
+        elif server.protocol == MCPProtocol.STDIO: 
+            if server.command:
+                return stdio_client(
+                    command=server.command,
+                    args=server.args or [],
+                    env=server.env or {}
+                )
+            else:
+                raise ValueError("STDIO transport requires 'command'")
+            
+        else:
+            raise ValueError(f"Server {server.server_id} has no valid connection config")
+        
     async def sync_server(
         self,
         server_id: str,
@@ -89,14 +111,15 @@ class MCPSyncer:
             existing_by_name = {t.name: t for t in existing_tools}
 
             # Connect to MCP server
-            async with streamable_http_client(server.url) as (read, write, _):
+            client = self.get_transport(server)
+            async with client as (read, write, _):
                 async with ClientSession(read, write) as session:
                     await session.initialize()
                     response = await session.list_tools()
                     raw_tools = response.tools
 
                     new_tools = []
-                    for tool_info in response.tools:
+                    for tool_info in raw_tools:
                         tool = mcp_tool_info_to_model(tool_info, server_id)
 
                         if tool.name in existing_by_name:
@@ -185,8 +208,12 @@ class MCPSyncer:
 
     async def create_server_and_sync(
         self,
-        url: str,
         name: str,
+        protocol: MCPProtocol = MCPProtocol.HTTP,
+        url: str = None,
+        command: str = None,
+        args: List[str] = None,
+        env: Dict[str, str] = None,
         description: Optional[str] = None,
         headers: Optional[Dict[str, str]] = None,
         timeout: int = 30,
@@ -195,8 +222,12 @@ class MCPSyncer:
         Create a new server and sync its tools.
 
         Args:
-            url: MCP server URL
             name: Server name
+            protocol: Transport of MCP server
+            url: Optional, MCP server URL if HTTP transport
+            command: Optional, command for MCP server if STDIO transport
+            args: Optional, args for MCP server if STDIO transport
+            env: Optional, enviromnet variables for MCP server if STDIO transport
             description: Optional description
             headers: HTTP headers
             timeout: Request timeout
@@ -204,6 +235,15 @@ class MCPSyncer:
         Returns:
             SyncResult
         """
+        if protocol == MCPProtocol.HTTP:
+            if not url:
+                raise ValueError("HTTP transport requires 'url'")
+        elif protocol == MCPProtocol.STDIO:
+            if not command:
+                raise ValueError("STDIO transport requires 'command'")
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
+        
         from rag_tools.tools.add_tool import ToolAdder
 
         adder = ToolAdder(self.postgres, self.qdrant, self.indexer)
@@ -212,6 +252,10 @@ class MCPSyncer:
         server = await adder.add_server(
             url=url,
             name=name,
+            protocol=protocol,
+            command=command,
+            args=args,
+            env=env,
             description=description,
             headers=headers,
             timeout=timeout,
