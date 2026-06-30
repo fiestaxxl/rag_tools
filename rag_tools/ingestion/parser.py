@@ -152,14 +152,25 @@ def mcp_tool_info_to_model(
     """
     tool_id = create_tool_id(server_id, tool_info.name)
 
+    # `tool_info` may be a raw MCP SDK Tool (camelCase: inputSchema / outputSchema,
+    # and no `tags`) — which is what sync_server passes from session.list_tools() —
+    # or our internal MCPToolInfo (snake_case). Accept both so sync doesn't crash
+    # with AttributeError: 'Tool' object has no attribute 'input_schema'.
+    raw_in = getattr(tool_info, "inputSchema", None)
+    if raw_in is None:
+        raw_in = getattr(tool_info, "input_schema", None) or {}
+    raw_out = getattr(tool_info, "outputSchema", None)
+    if raw_out is None:
+        raw_out = getattr(tool_info, "output_schema", None)
+
     return MCPTool(
         tool_id=tool_id,
         server_id=server_id,
         name=tool_info.name,
-        description=tool_info.description,
-        input_schema=tool_info.input_schema,
-        output_schema=tool_info.output_schema,
-        tags=tool_info.tags,
+        description=getattr(tool_info, "description", "") or "",
+        input_schema=_normalize_json_schema(raw_in),
+        output_schema=_normalize_json_schema(raw_out) if raw_out else None,
+        tags=getattr(tool_info, "tags", None) or [],
     )
 
 
