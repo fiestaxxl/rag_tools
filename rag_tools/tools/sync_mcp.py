@@ -19,6 +19,27 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 from mcp.client.stdio import stdio_client
 
+
+def _format_exception(exc: BaseException) -> str:
+    """Flatten an exception, EXPANDING ExceptionGroup/TaskGroup and cause chains,
+    so the real error isn't hidden behind 'unhandled errors in a TaskGroup'."""
+    parts: List[str] = []
+
+    def walk(e: BaseException) -> None:
+        parts.append(f"{type(e).__name__}: {e}")
+        subs = getattr(e, "exceptions", None)  # ExceptionGroup
+        if subs:
+            for s in subs:
+                walk(s)
+            return
+        cause = e.__cause__ or e.__context__
+        if cause is not None:
+            walk(cause)
+
+    walk(exc)
+    return " <- ".join(parts)
+
+
 @dataclass
 class SyncResult:
     """Result of a sync operation."""
@@ -144,7 +165,10 @@ class MCPSyncer:
                     result.success = True          
 
         except Exception as e:
-            result.errors.append(f"Error: {str(e)}")
+            # str(ExceptionGroup) is opaque ("unhandled errors in a TaskGroup
+            # (1 sub-exception)") — record the EXPANDED chain so the real cause
+            # (connection refused / timeout / schema error / …) is visible.
+            result.errors.append(f"Error: {_format_exception(e)}")
             server.status = ToolStatus.ERROR
             await self.postgres.add_server(server)
 
